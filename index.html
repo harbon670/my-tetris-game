@@ -33,21 +33,27 @@
         context.scale(20, 20);
 
         function arenaSweep() {
-            let rowCount = 1;
-            outer: for (let y = arena.length - 1; y > 0; --y) {
-                for (let x = 0; x < arena[y].length; ++x) {
-                    if (arena[y][x] === 0) continue outer;
-                }
-                const row = arena.splice(y, 1)[0].fill(0);
-                arena.unshift(row);
-                ++y;
-                player.score += rowCount * 10;
-                rowCount *= 2;
-            }
-            updateScore();
+    let rowCount = 1;
+    outer: for (let y = arena.length - 1; y > 0; --y) {
+        for (let x = 0; x < arena[y].length; ++x) {
+            if (arena[y][x] === 0) continue outer;
         }
+        const row = arena.splice(y, 1).fill(0);
+        arena.unshift(row);
+        ++y;
+        player.score += rowCount * 10;
+        rowCount *= 2;
 
-        function collide(arena, player) {
+        // --- ВОТ ЭТО ДОБАВЬ ДЛЯ УСКОРЕНИЯ ---
+        if (dropInterval > 100) { // Минимальный предел, чтобы не летало слишком быстро
+            dropInterval -= 50;   // Ускоряем падение на 50мс за каждую линию
+        }
+        // ------------------------------------
+    }
+    updateScore();
+}
+
+      function collide(arena, player) {
             const [m, o] = [player.matrix, player.pos];
             for (let y = 0; y < m.length; ++y) {
                 for (let x = 0; x < m[y].length; ++x) {
