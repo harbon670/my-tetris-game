@@ -1,34 +1,55 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <title>Zenitsu Tetris: Real Thunder</title>
+    <title>Zenitsu Tetris: Fixed Edition</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
+        * { box-sizing: border-box; }
         body { 
-            /* Используем надежный хостинг для фото Зеницу */
             background: url('https://i.ibb.co') no-repeat center center fixed; 
             background-size: cover; background-color: #1a1a1d;
             color: #fff; font-family: sans-serif; 
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            height: 100vh; margin: 0; overflow: hidden; 
+            min-height: 100vh; margin: 0; overflow: hidden; 
         }
         body::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: -1; }
-        .stats { display: flex; gap: 20px; font-size: 18px; margin-bottom: 10px; text-shadow: 2px 2px 5px #000; font-weight: bold; }
+        
+        .stats { display: flex; gap: 20px; font-size: 18px; margin-bottom: 10px; text-shadow: 2px 2px 5px #000; z-index: 5; }
         b { color: #FFE138; }
-        canvas { border: solid 3px #FFE138; background: rgba(0, 0, 0, 0.85); height: 55vh; box-shadow: 0 0 25px #FFE138; }
-        .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; width: 95%; max-width: 320px; }
-        button { padding: 15px; font-size: 22px; background: rgba(40,40,40,0.9); color: #fff; border: 2px solid #FFE138; border-radius: 10px; cursor: pointer; touch-action: manipulation; }
-        .restart-btn { grid-column: 1/4; background: rgba(150,40,40,0.9); border-color: #f55; font-size: 16px; }
-        #msg { position: absolute; top: 40%; font-size: 40px; color: #FFE138; font-weight: bold; display: none; text-shadow: 0 0 15px #000; z-index: 10; pointer-events: none; }
+
+        canvas { 
+            border: solid 3px #FFE138; background: rgba(0, 0, 0, 0.85); 
+            max-height: 65vh; width: auto; aspect-ratio: 240 / 400;
+            box-shadow: 0 0 25px #FFE138; z-index: 5;
+        }
+
+        .controls { 
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; 
+            margin-top: 15px; width: 95%; max-width: 320px; z-index: 5;
+        }
+        button { 
+            padding: 15px; font-size: 22px; background: rgba(40,40,40,0.9); color: #fff; 
+            border: 2px solid #FFE138; border-radius: 10px; cursor: pointer; touch-action: manipulation; 
+        }
+        button:active { background: #FFE138; color: #000; }
+        .restart-btn { grid-column: 1/4; background: rgba(150,40,40,0.9); border-color: #f55; font-size: 16px; margin-top: 5px; }
+
+        #msg { 
+            position: absolute; top: 45%; font-size: 35px; color: #FFE138; 
+            font-weight: bold; display: none; text-shadow: 0 0 15px #000; z-index: 100; pointer-events: none; 
+        }
     </style>
 </head>
 <body>
+
     <div class="stats">
         Очки: <b id="score">0</b> | Рекорд: <b id="high">0</b> | Ур: <b id="lvl">1</b>
     </div>
+
     <div id="msg">THUNDER CLAP! ⚡</div>
     <canvas id="tetris" width="240" height="400"></canvas>
+
     <div class="controls">
         <button onclick="pMove(-1)">⬅️</button>
         <button onclick="pRotate()">🔄</button>
@@ -42,7 +63,7 @@
     const ctx = canvas.getContext('2d');
     ctx.scale(20, 20);
 
-    // ПОЛНОСТЬЮ ЗАПОЛНЕННЫЕ МАТРИЦЫ ФИГУР
+    // ИСПРАВЛЕНО: Явные массивы без пустых мест
     function createPiece(type) {
         if (type === 'I') return [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]];
         if (type === 'L') return [[0,2,0],[0,2,0],[0,2,2]];
@@ -56,19 +77,13 @@
     const colors = [null, '#FFD700', '#FFE138', '#FFFACD', '#DAA520', '#B8860B', '#F0E68C', '#FFFFE0'];
     let arena = Array.from({length: 20}, () => Array(12).fill(0));
     let player = { pos: {x: 0, y: 0}, matrix: null, score: 0, lvl: 1, lines: 0 };
-    let dCount = 0, dInt = 1000, lastT = 0, parts = [];
+    let dCount = 0, dInt = 1000, lastT = 0;
 
     function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         drawM(arena, {x:0, y:0});
         drawM(player.matrix, player.pos);
-        parts.forEach((p, i) => {
-            ctx.fillStyle = '#FFE138'; ctx.globalAlpha = p.l;
-            ctx.fillRect(p.x, p.y, 0.2, 0.2);
-            p.x += p.vx; p.y += p.vy; p.l -= 0.05;
-            if(p.l <= 0) parts.splice(i, 1);
-        });
-        ctx.globalAlpha = 1;
     }
 
     function drawM(m, o) {
@@ -97,7 +112,6 @@
         let rows = 0;
         outer: for(let y=arena.length-1; y>=0; --y) {
             for(let x=0; x<arena[y].length; ++x) if(arena[y][x] === 0) continue outer;
-            for(let i=0; i<20; i++) parts.push({x: Math.random()*12, y: y, vx: Math.random()-0.5, vy: Math.random()-0.5, l: 1});
             arena.splice(y, 1); arena.unshift(new Array(12).fill(0));
             ++y; rows++;
         }
@@ -131,13 +145,10 @@
         const m = player.matrix;
         for(let y=0; y<m.length; ++y) for(let x=0; x<y; ++x) [m[x][y], m[y][x]] = [m[y][x], m[x][y]];
         m.forEach(row => row.reverse());
-        while(collide(arena, player)) {
-            player.pos.x += off; off = -(off + (off > 0 ? 1 : -1));
-            if(off > m[0].length) { 
-                m.forEach(row => row.reverse());
-                for(let y=0; y<m.length; ++y) for(let x=0; x<y; ++x) [m[x][y], m[y][x]] = [m[y][x], m[x][y]];
-                player.pos.x = pos; return;
-            }
+        if(collide(arena, player)) {
+            m.forEach(row => row.reverse());
+            for(let y=0; y<m.length; ++y) for(let x=0; x<y; ++x) [m[x][y], m[y][x]] = [m[y][x], m[x][y]];
+            player.pos.x = pos;
         }
     }
 
@@ -153,8 +164,8 @@
     }
 
     function mReset() {
-        arena = Array.from({length: 20}, () => Array(12).fill(0));
-        player.score = 0; player.level = 1; player.lines = 0; dInt = 1000;
+        arena.forEach(row => row.fill(0));
+        player.score = 0; player.lvl = 1; player.lines = 0; dInt = 1000;
         pReset(); uStats();
     }
 
@@ -177,185 +188,5 @@
 
     mReset(); update();
 </script>
-</body>
-</html>
-
-    <div id="level-up">THUNDER CLAP! ⚡</div>
-    <canvas id="tetris" width="240" height="400"></canvas>
-
-    <div class="controls">
-        <button onclick="playerMove(-1)">⬅️</button>
-        <button onclick="playerRotate()">🔄</button>
-        <button onclick="playerMove(1)">➡️</button>
-        <button style="grid-column: 2" onclick="playerDrop()">⬇️</button>
-        <button class="restart-btn" onclick="manualReset()">НОВАЯ ИГРА ⚡</button>
-    </div>
-
-    <script>
-        const canvas = document.getElementById('tetris');
-        const context = canvas.getContext('2d');
-        context.scale(20, 20);
-
-        // ЯВНЫЕ МАТРИЦЫ ФИГУР (Исправлено)
-        function createPiece(type) {
-            if (type === 'T') return [[0, 1, 0], [1, 1, 1], [0, 0, 0]];
-            if (type === 'O') return [[2, 2], [2, 2]];
-            if (type === 'L') return [[0, 3, 0], [0, 3, 0], [0, 3, 3]];
-            if (type === 'J') return [[0, 4, 0], [0, 4, 0], [4, 4, 0]];
-            if (type === 'I') return [[0, 5, 0, 0], [0, 5, 0, 0], [0, 5, 0, 0], [0, 5, 0, 0]];
-            if (type === 'S') return [[0, 6, 6], [6, 6, 0], [0, 0, 0]];
-            if (type === 'Z') return [[7, 7, 0], [0, 7, 7], [0, 0, 0]];
-        }
-
-        const colors = [null, '#FFD700', '#FFE138', '#FFFACD', '#DAA520', '#B8860B', '#F0E68C', '#FFFFE0'];
-        const arena = Array.from({length: 20}, () => Array(12).fill(0));
-        const player = { pos: {x: 0, y: 0}, matrix: null, score: 0, level: 1, lines: 0 };
-        let particles = [];
-
-        function createParticles(y) {
-            for (let x = 0; x < 12; x++) {
-                for (let i = 0; i < 5; i++) {
-                    particles.push({
-                        x: x + Math.random(), y: y + Math.random(),
-                        vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
-                        life: 1.0
-                    });
-                }
-            }
-        }
-
-        function draw() {
-            context.fillStyle = '#000';
-            context.fillRect(0, 0, canvas.width, canvas.height);
-            drawMatrix(arena, {x: 0, y: 0});
-            drawMatrix(player.matrix, player.pos);
-            
-            particles.forEach((p, i) => {
-                context.fillStyle = '#FFE138';
-                context.globalAlpha = p.life;
-                context.fillRect(p.x, p.y, 0.2, 0.2);
-                p.x += p.vx; p.y += p.vy; p.life -= 0.05;
-                if (p.life <= 0) particles.splice(i, 1);
-            });
-            context.globalAlpha = 1;
-        }
-
-        function drawMatrix(matrix, offset) {
-            if (!matrix) return;
-            matrix.forEach((row, y) => {
-                row.forEach((value, x) => {
-                    if (value !== 0) {
-                        context.fillStyle = colors[value];
-                        context.fillRect(x + offset.x, y + offset.y, 1, 1);
-                        context.strokeStyle = '#000';
-                        context.lineWidth = 0.05;
-                        context.strokeRect(x + offset.x, y + offset.y, 1, 1);
-                    }
-                });
-            });
-        }
-
-        function collide(arena, player) {
-            const [m, o] = [player.matrix, player.pos];
-            for (let y = 0; y < m.length; ++y) {
-                for (let x = 0; x < m[y].length; ++x) {
-                    if (m[y][x] !== 0 && (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) return true;
-                }
-            }
-            return false;
-        }
-
-        function arenaSweep() {
-            let rowCount = 0;
-            outer: for (let y = arena.length - 1; y >= 0; --y) {
-                for (let x = 0; x < arena[y].length; ++x) {
-                    if (arena[y][x] === 0) continue outer;
-                }
-                createParticles(y);
-                arena.splice(y, 1);
-                arena.unshift(new Array(12).fill(0));
-                ++y; rowCount++;
-            }
-            if (rowCount > 0) {
-                player.score += rowCount * 10 * player.level;
-                player.lines += rowCount;
-                if (player.lines >= player.level * 5) {
-                    player.level++;
-                    dropInterval = Math.max(100, 1000 - (player.level - 1) * 150);
-                    const lu = document.getElementById('level-up');
-                    lu.style.display = 'block';
-                    setTimeout(() => lu.style.display = 'none', 800);
-                }
-                document.getElementById('score').innerText = player.score;
-                document.getElementById('level').innerText = player.level;
-            }
-        }
-
-        function playerDrop() {
-            player.pos.y++;
-            if (collide(arena, player)) {
-                player.pos.y--;
-                player.matrix.forEach((row, y) => {
-                    row.forEach((value, x) => {
-                        if (value !== 0) arena[y + player.pos.y][x + player.pos.x] = value;
-                    });
-                });
-                playerReset();
-                arenaSweep();
-            }
-            dropCounter = 0;
-        }
-
-        function playerMove(dir) {
-            player.pos.x += dir;
-            if (collide(arena, player)) player.pos.x -= dir;
-        }
-
-        function playerRotate() {
-            const m = player.matrix;
-            for (let y = 0; y < m.length; ++y) {
-                for (let x = 0; x < y; ++x) [m[x][y], m[y][x]] = [m[y][x], m[x][y]];
-            }
-            m.forEach(row => row.reverse());
-            if (collide(arena, player)) m.forEach(row => row.reverse());
-        }
-
-        function playerReset() {
-            const pieces = 'TJLOSZI';
-            player.matrix = createPiece(pieces[pieces.length * Math.random() | 0]);
-            player.pos.y = 0;
-            player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
-            if (collide(arena, player)) manualReset();
-        }
-
-        function manualReset() {
-            arena.forEach(row => row.fill(0));
-            player.score = 0; player.level = 1; player.lines = 0;
-            dropInterval = 1000;
-            playerReset();
-            document.getElementById('score').innerText = 0;
-            document.getElementById('level').innerText = 1;
-        }
-
-        let dropCounter = 0, dropInterval = 1000, lastTime = 0;
-        function update(time = 0) {
-            const deltaTime = time - lastTime;
-            lastTime = time;
-            dropCounter += deltaTime;
-            if (dropCounter > dropInterval) playerDrop();
-            draw();
-            requestAnimationFrame(update);
-        }
-
-        document.addEventListener('keydown', e => {
-            if (e.keyCode === 37) playerMove(-1);
-            if (e.keyCode === 39) playerMove(1);
-            if (e.keyCode === 40) playerDrop();
-            if (e.keyCode === 38) playerRotate();
-        });
-
-        manualReset();
-        update();
-    </script>
 </body>
 </html>
