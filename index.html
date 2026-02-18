@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <title>Zenitsu Tetris: Thunder Clap Edition</title>
+    <title>Zenitsu Tetris: Thunder Clap</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
@@ -11,16 +11,33 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
             height: 100vh; margin: 0; overflow: hidden; 
         }
-        body::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: -1; }
-        .stats-container { display: flex; gap: 20px; font-size: 20px; margin-bottom: 10px; text-shadow: 2px 2px 8px #000; font-weight: bold; }
-        b { color: #FFE138; text-shadow: 0 0 10px rgba(255, 225, 56, 1); } 
-        canvas { border: solid 3px #FFE138; background-color: rgba(0, 0, 0, 0.8); height: 60vh; box-shadow: 0 0 25px rgba(255, 225, 56, 0.5); }
-        .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; width: 90%; max-width: 320px; }
-        button { padding: 15px; font-size: 22px; background: rgba(30, 30, 30, 0.9); color: white; border: 2px solid #FFE138; border-radius: 12px; touch-action: manipulation; cursor: pointer; transition: 0.1s; }
+        body::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: -1; }
+        
+        .stats-container { display: flex; gap: 20px; font-size: 18px; margin-bottom: 10px; text-shadow: 2px 2px 8px #000; font-weight: bold; }
+        b { color: #FFE138; text-shadow: 0 0 10px #FFE138; } 
+
+        canvas { border: solid 3px #FFE138; background-color: rgba(0, 0, 0, 0.85); height: 55vh; box-shadow: 0 0 25px rgba(255, 225, 56, 0.4); }
+
+        .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; width: 95%; max-width: 320px; }
+        button { 
+            padding: 15px; font-size: 22px; background: rgba(40, 40, 40, 0.9); color: white; 
+            border: 2px solid #FFE138; border-radius: 12px; touch-action: manipulation; cursor: pointer; 
+        }
         button:active { background: #FFE138; color: #000; transform: scale(0.95); }
-        .restart-btn { grid-column: 1 / 4; background: rgba(131, 51, 51, 0.9); border-color: #ff4d4d; font-size: 16px; }
-        #level-up { position: absolute; top: 40%; font-size: 45px; color: #FFE138; font-weight: bold; display: none; text-shadow: 0 0 20px #FFA500; z-index: 100; animation: thunder 0.8s ease-out forwards; }
-        @keyframes thunder { 0% { opacity: 1; transform: scale(0.5) rotate(-5deg); filter: brightness(3); } 50% { transform: scale(1.1) rotate(5deg); } 100% { opacity: 0; transform: scale(1.3); } }
+        
+        .restart-btn { grid-column: 1 / 4; background: rgba(131, 51, 51, 0.9); border-color: #ff4d4d; font-size: 16px; margin-top: 5px; }
+
+        #msg-overlay { 
+            position: absolute; top: 40%; font-size: 40px; color: #FFE138; 
+            font-weight: bold; display: none; text-shadow: 0 0 20px #FFA500; 
+            z-index: 100; text-align: center; pointer-events: none;
+        }
+        .anim-thunder { animation: thunder 0.8s ease-out forwards; }
+
+        @keyframes thunder { 
+            0% { opacity: 1; transform: scale(0.5); filter: brightness(3); } 
+            100% { opacity: 0; transform: scale(1.5); } 
+        }
     </style>
 </head>
 <body>
@@ -31,7 +48,7 @@
         <div>Ур: <b id="level">1</b></div>
     </div>
 
-    <div id="level-up">THUNDER CLAP! ⚡</div>
+    <div id="msg-overlay">THUNDER CLAP! ⚡</div>
     <canvas id="tetris" width="240" height="400"></canvas>
 
     <div class="controls">
@@ -39,22 +56,23 @@
         <button onclick="playerRotate()">🔄</button>
         <button onclick="playerMove(1)">➡️</button>
         <button style="grid-column: 2" onclick="playerDrop()">⬇️</button>
-        <button class="restart-btn" onclick="manualReset()">ВЫХОД ИЗ СНА ⚡</button>
+        <button class="restart-btn" onclick="manualReset()">ПЕРЕЗАПУСК ⚡</button>
     </div>
 
     <script>
         const canvas = document.getElementById('tetris');
         const context = canvas.getContext('2d');
+        const msgOverlay = document.getElementById('msg-overlay');
         context.scale(20, 20);
 
         function createPiece(type) {
-            if (type === 'I') return [,,,];
-            if (type === 'L') return [,,];
-            if (type === 'J') return [,,];
-            if (type === 'O') return [,];
-            if (type === 'Z') return [,,];
-            if (type === 'S') return [,,];
-            if (type === 'T') return [,,];
+            if (type === 'I') return [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]];
+            if (type === 'L') return [[0,2,0],[0,2,0],[0,2,2]];
+            if (type === 'J') return [[0,3,0],[0,3,0],[3,3,0]];
+            if (type === 'O') return [[4,4],[4,4]];
+            if (type === 'Z') return [[5,5,0],[0,5,5],[0,0,0]];
+            if (type === 'S') return [[0,6,6],[6,6,0],[0,0,0]];
+            if (type === 'T') return [[0,7,0],[7,7,7],[0,0,0]];
         }
 
         const colors = [null, '#FFD700', '#FFE138', '#FFFACD', '#DAA520', '#B8860B', '#F0E68C', '#FFFFE0'];
@@ -62,53 +80,47 @@
         const player = { pos: {x: 0, y: 0}, matrix: null, score: 0, lines: 0, level: 1, highScore: parseInt(localStorage.getItem('zenBest')) || 0 };
         
         let particles = [];
+        let dropCounter = 0, dropInterval = 1000, lastTime = 0;
+
+        function showMsg(text) {
+            msgOverlay.innerText = text;
+            msgOverlay.style.display = 'block';
+            msgOverlay.classList.remove('anim-thunder');
+            void msgOverlay.offsetWidth; // Trigger reflow
+            msgOverlay.classList.add('anim-thunder');
+            setTimeout(() => { msgOverlay.style.display = 'none'; }, 800);
+        }
 
         function createParticles(y) {
             for (let x = 0; x < 12; x++) {
                 for (let i = 0; i < 3; i++) {
-                    particles.push({
-                        x: x + Math.random(),
-                        y: y + Math.random(),
-                        vx: (Math.random() - 0.5) * 0.5,
-                        vy: (Math.random() - 0.5) * 0.5,
-                        life: 1.0,
-                        color: Math.random() > 0.5 ? '#FFE138' : '#FFFFFF'
-                    });
+                    particles.push({ x: x + 0.5, y: y + 0.5, vx: (Math.random()-0.5)*0.8, vy: (Math.random()-0.5)*0.8, life: 1.0 });
                 }
             }
-        }
-
-        function updateParticles() {
-            for (let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.x += p.vx; p.y += p.vy; p.life -= 0.05;
-                if (p.life <= 0) particles.splice(i, 1);
-            }
-        }
-
-        function drawParticles() {
-            particles.forEach(p => {
-                context.fillStyle = p.color;
-                context.globalAlpha = p.life;
-                context.fillRect(p.x, p.y, 0.15, 0.15);
-                context.globalAlpha = 1;
-            });
         }
 
         function draw() {
             context.clearRect(0, 0, canvas.width, canvas.height);
             drawMatrix(arena, {x: 0, y: 0});
             drawMatrix(player.matrix, player.pos);
-            drawParticles();
+            particles.forEach((p, i) => {
+                context.fillStyle = '#FFE138';
+                context.globalAlpha = p.life;
+                context.fillRect(p.x, p.y, 0.2, 0.2);
+                p.x += p.vx; p.y += p.vy; p.life -= 0.04;
+                if (p.life <= 0) particles.splice(i, 1);
+            });
+            context.globalAlpha = 1;
         }
 
         function drawMatrix(matrix, offset) {
+            if (!matrix) return;
             matrix.forEach((row, y) => {
                 row.forEach((value, x) => {
                     if (value !== 0) {
                         context.fillStyle = colors[value];
                         context.fillRect(x + offset.x, y + offset.y, 1, 1);
-                        context.strokeStyle = 'rgba(0,0,0,0.4)';
+                        context.strokeStyle = 'rgba(0,0,0,0.5)';
                         context.lineWidth = 0.05;
                         context.strokeRect(x + offset.x, y + offset.y, 1, 1);
                     }
@@ -124,14 +136,6 @@
                 }
             }
             return false;
-        }
-
-        function merge(arena, player) {
-            player.matrix.forEach((row, y) => {
-                row.forEach((value, x) => {
-                    if (value !== 0) arena[y + player.pos.y][x + player.pos.x] = value;
-                });
-            });
         }
 
         function arenaSweep() {
@@ -151,8 +155,7 @@
                 if (Math.floor(player.lines / 5) >= player.level) { 
                     player.level++;
                     dropInterval = Math.max(100, 1000 - (player.level - 1) * 150);
-                    document.getElementById('level-up').style.display = 'block';
-                    setTimeout(() => document.getElementById('level-up').style.display = 'none', 1000);
+                    showMsg("THUNDER CLAP! ⚡");
                 }
                 updateStats();
             }
@@ -162,7 +165,11 @@
             player.pos.y++;
             if (collide(arena, player)) {
                 player.pos.y--;
-                merge(arena, player);
+                player.matrix.forEach((row, y) => {
+                    row.forEach((value, x) => {
+                        if (value !== 0) arena[y + player.pos.y][x + player.pos.x] = value;
+                    });
+                });
                 playerReset();
                 arenaSweep();
             }
@@ -180,7 +187,7 @@
                 for (let x = 0; x < y; ++x) [m[x][y], m[y][x]] = [m[y][x], m[x][y]];
             }
             m.forEach(row => row.reverse());
-            if (collide(arena, player)) m.forEach(row => row.reverse()); // Отмена если нельзя повернуть
+            if (collide(arena, player)) { m.forEach(row => row.reverse()); rotate(m); rotate(m); rotate(m); }
         }
 
         function playerReset() {
@@ -193,7 +200,8 @@
                     player.highScore = player.score;
                     localStorage.setItem('zenBest', player.highScore);
                 }
-                manualReset();
+                showMsg("GAME OVER");
+                setTimeout(manualReset, 800);
             }
         }
 
@@ -211,13 +219,11 @@
             document.getElementById('high-score').innerText = player.highScore;
         }
 
-        let dropCounter = 0, dropInterval = 1000, lastTime = 0;
         function update(time = 0) {
             const deltaTime = time - lastTime;
             lastTime = time;
             dropCounter += deltaTime;
             if (dropCounter > dropInterval) playerDrop();
-            updateParticles();
             draw();
             requestAnimationFrame(update);
         }
