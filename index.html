@@ -2,31 +2,23 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Tetris Ultimate</title>
+  <title>Tetris Fixed</title>
   <style>
-    body { background: #000; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; color: #fff; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
-    canvas { border: 4px solid #333; background: #0a0a0a; box-shadow: 0 0 20px rgba(0,255,255,0.2); }
-    #stats { position: absolute; top: 10px; text-align: center; width: 100%; }
-    .info { font-size: 20px; text-transform: uppercase; letter-spacing: 2px; }
+    body { background: #000; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; color: #fff; font-family: sans-serif; }
+    canvas { border: 2px solid #fff; background: #0a0a0a; }
   </style>
 </head>
 <body>
-  <div id="stats"><div class="info" id="score-display">Игрок: 0 | Speed: 1</div></div>
+  <div style="position: absolute; top: 10px;" id="sc">Score: 0</div>
   <canvas width="320" height="640" id="game"></canvas>
 
   <script>
     const canvas = document.getElementById('game');
     const context = canvas.getContext('2d');
-    const scoreDisplay = document.getElementById('score-display');
     const grid = 32;
-    const playerName = prompt("Ваше имя", "Игрок") || "Игрок";
-    
-    let tetrominoSequence = [], playfield = [], score = 0, count = 0, speed = 35, gameOver = false;
+    let score = 0;
 
-    // Инициализация поля
-    for (let row = -2; row < 20; row++) { playfield[row] = new Array(10).fill(0); }
-
-    // Полные матрицы фигур
+    // Матрицы фигур — теперь они ТОЧНО заполнены
     const tetrominos = {
       'I': [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
       'J': [[1,0,0],[1,1,1],[0,0,0]],
@@ -37,113 +29,109 @@
       'T': [[0,1,0],[1,1,1],[0,0,0]]
     };
 
-    const colors = { 'I': '#00f0f0', 'O': '#f0f000', 'T': '#a000f0', 'S': '#00f000', 'Z': '#f00000', 'J': '#0000f0', 'L': '#f0a000' };
+    const colors = { 'I': 'cyan', 'O': 'yellow', 'T': 'purple', 'S': 'green', 'Z': 'red', 'J': 'blue', 'L': 'orange' };
 
-    function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+    let playfield = [];
+    for (let row = -2; row < 20; row++) {
+      playfield[row] = new Array(10).fill(0);
+    }
 
-    function generateSequence() {
-      const sequence = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'];
-      while (sequence.length) {
-        const rand = getRandomInt(0, sequence.length - 1);
-        tetrominoSequence.push(sequence.splice(rand, 1)[0]);
+    let sequence = [];
+    function genSeq() {
+      const s = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'];
+      while (s.length) {
+        const rand = Math.floor(Math.random() * s.length);
+        sequence.push(s.splice(rand, 1)[0]);
       }
     }
 
-    function getNextTetromino() {
-      if (tetrominoSequence.length === 0) generateSequence();
-      const name = tetrominoSequence.pop();
+    function getNext() {
+      if (sequence.length === 0) genSeq();
+      const name = sequence.pop();
       return { name, matrix: tetrominos[name], row: name === 'I' ? -1 : -2, col: 3 };
     }
 
-    function rotate(matrix) { return matrix.map((_, i) => matrix.map(row => row[i]).reverse()); }
+    function rotate(matrix) {
+      return matrix.map((_, i) => matrix.map(row => row[i]).reverse());
+    }
 
-    function isValidMove(matrix, cellRow, cellCol) {
+    function isValid(matrix, cellRow, cellCol) {
       for (let r = 0; r < matrix.length; r++) {
         for (let c = 0; c < matrix[r].length; c++) {
-          if (matrix[r][c]) {
-            if (cellCol + c < 0 || cellCol + c >= 10 || cellRow + r >= 20 || (cellRow + r >= 0 && playfield[cellRow + r][cellCol + c])) return false;
-          }
+          if (matrix[r][c] && (cellCol + c < 0 || cellCol + c >= 10 || cellRow + r >= 20 || playfield[cellRow + r]?.[cellCol + c])) return false;
         }
       }
       return true;
     }
 
-    function placeTetromino() {
-      tetromino.matrix.forEach((row, r) => {
-        row.forEach((value, c) => {
-          if (value) {
-            if (tetromino.row + r < 0) return (gameOver = true);
-            playfield[tetromino.row + r][tetromino.col + c] = tetromino.name;
-          }
-        });
-      });
-
-      for (let r = 19; r >= 0; r--) {
-        if (playfield[r].every(cell => !!cell)) {
-          score += 100;
-          // Ускоряем каждые 500 очков
-          if (score % 500 === 0 && speed > 5) speed -= 3;
-          playfield.splice(r, 1);
-          playfield.unshift(new Array(10).fill(0));
-          r++;
-        }
-      }
-      scoreDisplay.innerText = `${playerName}: ${score} | Speed: ${Math.round((35/speed)*10)/10}`;
-      tetromino = getNextTetromino();
-      if (!isValidMove(tetromino.matrix, tetromino.row, tetromino.col)) gameOver = true;
-    }
-
-    let tetromino = getNextTetromino();
+    let tetromino = getNext();
+    let count = 0;
+    let gameOver = false;
 
     function loop() {
-      if (gameOver) {
-        context.fillStyle = 'rgba(0,0,0,0.8)'; context.fillRect(0, 280, 320, 80);
-        context.fillStyle = '#ff0000'; context.font = '24px monospace'; context.textAlign = 'center';
-        context.fillText('GAME OVER', 160, 330);
-        return;
-      }
+      if (gameOver) return;
       requestAnimationFrame(loop);
-      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.clearRect(0,0,canvas.width,canvas.height);
 
-      // Сетка (дизайн)
-      context.strokeStyle = '#111';
-      for(let i=0; i<320; i+=grid) { context.strokeRect(i, 0, 1, 640); }
-      for(let i=0; i<640; i+=grid) { context.strokeRect(0, i, 320, 1); }
-
-      playfield.forEach((row, r) => row.forEach((cell, c) => {
-        if (cell) {
-          context.fillStyle = colors[cell];
-          context.fillRect(c * grid, r * grid, grid - 1, grid - 1);
+      // Отрисовка поля
+      for (let r = 0; r < 20; r++) {
+        for (let c = 0; c < 10; c++) {
+          if (playfield[r][c]) {
+            context.fillStyle = colors[playfield[r][c]];
+            context.fillRect(c*grid, r*grid, grid-1, grid-1);
+          }
         }
-      }));
-
-      if (++count > speed) {
-        tetromino.row++; count = 0;
-        if (!isValidMove(tetromino.matrix, tetromino.row, tetromino.col)) { tetromino.row--; placeTetromino(); }
       }
 
+      // Падение
+      if (++count > 35) {
+        tetromino.row++;
+        count = 0;
+        if (!isValid(tetromino.matrix, tetromino.row, tetromino.col)) {
+          tetromino.row--;
+          tetromino.matrix.forEach((row, r) => {
+            row.forEach((v, c) => {
+              if (v) {
+                if (tetromino.row + r < 0) gameOver = true;
+                playfield[tetromino.row + r][tetromino.col + c] = tetromino.name;
+              }
+            });
+          });
+          // Проверка линий
+          for (let r = 19; r >= 0; r--) {
+            if (playfield[r].every(v => !!v)) {
+              score += 100;
+              document.getElementById('sc').innerHTML = "Score: " + score;
+              playfield.splice(r, 1);
+              playfield.unshift(new Array(10).fill(0));
+              r++;
+            }
+          }
+          tetromino = getNext();
+        }
+      }
+
+      // Отрисовка текущей фигуры
       context.fillStyle = colors[tetromino.name];
-      tetromino.matrix.forEach((row, r) => row.forEach((value, c) => {
-        if (value) context.fillRect((tetromino.col + c) * grid, (tetromino.row + r) * grid, grid - 1, grid - 1);
-      }));
+      tetromino.matrix.forEach((row, r) => {
+        row.forEach((v, c) => {
+          if (v) context.fillRect((tetromino.col+c)*grid, (tetromino.row+r)*grid, grid-1, grid-1);
+        });
+      });
     }
 
     document.addEventListener('keydown', e => {
-      if (gameOver) return;
-      if (e.keyCode === 37 || e.keyCode === 39) {
-        const col = e.keyCode === 37 ? tetromino.col - 1 : tetromino.col + 1;
-        if (isValidMove(tetromino.matrix, tetromino.row, col)) tetromino.col = col;
-      }
+      if (e.keyCode === 37 && isValid(tetromino.matrix, tetromino.row, tetromino.col - 1)) tetromino.col--;
+      if (e.keyCode === 39 && isValid(tetromino.matrix, tetromino.row, tetromino.col + 1)) tetromino.col++;
       if (e.keyCode === 38) {
-        const matrix = rotate(tetromino.matrix);
-        if (isValidMove(matrix, tetromino.row, tetromino.col)) tetromino.matrix = matrix;
+        const m = rotate(tetromino.matrix);
+        if (isValid(m, tetromino.row, tetromino.col)) tetromino.matrix = m;
       }
-      if (e.keyCode === 40) {
-        if (isValidMove(tetromino.matrix, tetromino.row + 1, tetromino.col)) tetromino.row++;
-      }
+      if (e.keyCode === 40 && isValid(tetromino.matrix, tetromino.row + 1, tetromino.col)) tetromino.row++;
     });
 
     requestAnimationFrame(loop);
   </script>
 </body>
 </html>
+
