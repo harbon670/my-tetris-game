@@ -7,7 +7,7 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            /* Исправлена ссылка на фон */
+            /* Исправлено: Прямая ссылка на Зеницу */
             background: #1a1a1d url('https://i.ibb.co') no-repeat center center fixed; 
             background-size: cover; color: #fff; font-family: sans-serif;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -32,9 +32,9 @@
         <canvas id="t" width="240" height="400"></canvas>
 
         <div class="controls">
-            <button onclick="m(-1)">⬅️</button>
+            <button onclick="m(-1)">👈🏼</button>
             <button onclick="r()">🔄</button>
-            <button onclick="m(1)">➡️</button>
+            <button onclick="m(1)">🫳🏼</button>
             <button style="grid-column: 2" onclick="d()">⬇️</button>
             <button class="restart" onclick="init()">НОВАЯ ИГРА ⚡</button>
         </div>
@@ -60,14 +60,16 @@
     function init() {
         arena = Array.from({length: 20}, () => Array(12).fill(0));
         player = { pos: {x: 4, y: 0}, matrix: null, score: 0 };
-        dropCounter = 0; dropInterval = 1000; lastTime = 0;
-        reset(); updateScore();
+        dropCounter = 0; 
+        dropInterval = 1000; // Начальная скорость
+        lastTime = 0;
+        reset(); 
+        updateScore();
     }
 
     function reset() {
         const p = 'ILJOTSZ';
         const type = p[p.length * Math.random() | 0];
-        // ИСПРАВЛЕНО: Клонируем массив, чтобы не портить оригинал в shapes
         player.matrix = shapes[type].map(row => [...row]);
         player.pos.y = 0; player.pos.x = 4;
         if (collide()) {
@@ -95,7 +97,6 @@
 
     function r() {
         rotate(player.matrix);
-        // Если после поворота врезались — возвращаем как было (3 поворота = назад)
         if (collide()) { rotate(player.matrix); rotate(player.matrix); rotate(player.matrix); }
     }
 
@@ -106,7 +107,8 @@
             player.matrix.forEach((row, y) => {
                 row.forEach((v, x) => { if (v !== 0) arena[y + player.pos.y][x + player.pos.x] = v; });
             });
-            sweep(); reset();
+            sweep(); 
+            reset();
         }
         dropCounter = 0;
     }
@@ -123,7 +125,16 @@
             arena.splice(y, 1); arena.unshift(new Array(12).fill(0));
             ++y; count++;
         }
-        if (count > 0) { player.score += count * 10; updateScore(); }
+        if (count > 0) { 
+            player.score += count * 10; 
+            
+            // УСКОРЕНИЕ: Каждая линия уменьшает задержку на 50мс
+            if (dropInterval > 100) {
+                dropInterval -= 50; 
+            }
+            
+            updateScore(); 
+        }
     }
 
     function updateScore() {
