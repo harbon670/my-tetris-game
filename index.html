@@ -2,20 +2,18 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Tetris Gestures</title>
+  <title>Tetris Touch Pure</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <style>
     body { background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: none; }
-    canvas { border: 2px solid #222; background: #050505; max-height: 85vh; max-width: 95vw; box-shadow: 0 0 20px rgba(0,255,255,0.1); }
-    #score { font-size: 20px; margin-bottom: 10px; color: #0ff; letter-spacing: 2px; }
-    .hint { font-size: 12px; color: #555; margin-top: 5px; }
+    canvas { border: 2px solid #333; background: #050505; max-height: 80vh; max-width: 90vw; touch-action: none; }
+    #score { font-size: 24px; margin-bottom: 10px; color: #0ff; }
   </style>
 </head>
 <body>
 
   <div id="score">SCORE: 0</div>
   <canvas width="320" height="640" id="game"></canvas>
-  <div class="hint">Тап — поворот | Свайп — движение</div>
 
   <script>
     const canvas = document.getElementById('game');
@@ -23,7 +21,7 @@
     const grid = 32;
     let score = 0, count = 0, gameOver = false;
 
-    // Матрицы фигур
+    // Полные матрицы всех фигур
     const tetrominos = {
       'I': [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
       'J': [[1,0,0],[1,1,1],[0,0,0]],
@@ -35,85 +33,74 @@
     };
 
     const colors = { 'I': '#0ff', 'O': '#ff0', 'T': '#a0f', 'S': '#0f0', 'Z': '#f00', 'J': '#00f', 'L': '#f70' };
-
-    let playfield = [];
-    for (let row = -2; row < 20; row++) playfield[row] = new Array(10).fill(0);
-
-    let sequence = [];
-    function genSeq() {
-      const s = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'];
-      while (s.length) sequence.push(s.splice(Math.floor(Math.random()*s.length), 1)[0]);
-    }
-
-    function getNext() {
-      if (!sequence.length) genSeq();
-      const name = sequence.pop();
-      return { name, matrix: tetrominos[name], row: name === 'I' ? -1 : -2, col: 3 };
-    }
+    let playfield = Array.from({length: 20}, () => new Array(10).fill(0));
 
     function rotate(matrix) { return matrix.map((_, i) => matrix.map(row => row[i]).reverse()); }
 
     function isValid(matrix, cellRow, cellCol) {
       for (let r = 0; r < matrix.length; r++) {
         for (let c = 0; c < matrix[r].length; c++) {
-          if (matrix[r][c] && (cellCol + c < 0 || cellCol + c >= 10 || cellRow + r >= 20 || playfield[cellRow + r]?.[cellCol + c])) return false;
+          if (matrix[r][c] && (cellCol + c < 0 || cellCol + c >= 10 || cellRow + r >= 20 || (cellRow + r >= 0 && playfield[cellRow + r][cellCol + c]))) return false;
         }
       }
       return true;
     }
 
+    let sequence = [];
+    function getNext() {
+      if (!sequence.length) sequence = ['I','J','L','O','S','T','Z'].sort(() => Math.random() - 0.5);
+      const name = sequence.pop();
+      return { name, matrix: tetrominos[name], row: name === 'I' ? -1 : -2, col: 3 };
+    }
+
     let tetromino = getNext();
 
-    // --- ЛОГИКА ЖЕСТОВ ---
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let isSwipe = false;
+    // --- УПРАВЛЕНИЕ УНИВЕРСАЛЬНОЕ ---
+    let startX, startY, moveX, moveY, isMoved;
 
-    window.addEventListener('touchstart', e => {
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-      isSwipe = false;
-    }, {passive: false});
+    canvas.addEventListener('pointerdown', e => {
+      startX = e.clientX; startY = e.clientY;
+      isMoved = false;
+    });
 
-    window.addEventListener('touchmove', e => {
-      if (gameOver) return;
-      let dx = e.touches[0].clientX - touchStartX;
-      let dy = e.touches[0].clientY - touchStartY;
-
-      if (Math.abs(dx) > 30 || Math.abs(dy) > 30) isSwipe = true;
+    canvas.addEventListener('pointermove', e => {
+      if (gameOver || startX === undefined) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
 
       if (Math.abs(dx) > grid) {
         const dir = dx > 0 ? 1 : -1;
         if (isValid(tetromino.matrix, tetromino.row, tetromino.col + dir)) {
           tetromino.col += dir;
-          touchStartX = e.touches[0].clientX; // Сброс для плавности
+          startX = e.clientX;
+          isMoved = true;
         }
       }
-      
       if (dy > grid) {
         if (isValid(tetromino.matrix, tetromino.row + 1, tetromino.col)) {
           tetromino.row++;
-          touchStartY = e.touches[0].clientY;
+          startY = e.clientY;
+          isMoved = true;
         }
       }
-      e.preventDefault();
-    }, {passive: false});
+    });
 
-    window.addEventListener('touchend', e => {
-      if (!isSwipe && !gameOver) {
+    window.addEventListener('pointerup', () => {
+      if (!isMoved && !gameOver) {
         const m = rotate(tetromino.matrix);
         if (isValid(m, tetromino.row, tetromino.col)) tetromino.matrix = m;
       }
+      startX = undefined;
     });
 
     function loop() {
       if (gameOver) {
-        context.fillStyle = 'white'; context.font = '24px Arial'; context.textAlign = 'center';
+        context.fillStyle = 'red'; context.font = '30px Arial'; context.textAlign = 'center';
         context.fillText('GAME OVER', 160, 320);
         return;
       }
       requestAnimationFrame(loop);
-      context.clearRect(0,0,320,640);
+      context.clearRect(0,0,canvas.width,canvas.height);
 
       playfield.forEach((row, r) => row.forEach((cell, c) => {
         if (cell) { context.fillStyle = colors[cell]; context.fillRect(c*grid, r*grid, grid-1, grid-1); }
@@ -124,7 +111,8 @@
         if (!isValid(tetromino.matrix, tetromino.row, tetromino.col)) {
           tetromino.row--;
           tetromino.matrix.forEach((row, r) => row.forEach((v, c) => {
-            if (v) { if (tetromino.row+r < 0) gameOver = true; else playfield[tetromino.row+r][tetromino.col+c] = tetromino.name; }
+            if (v && tetromino.row + r >= 0) playfield[tetromino.row+r][tetromino.col+c] = tetromino.name;
+            else if (v && tetromino.row + r < 0) gameOver = true;
           }));
           for (let r = 19; r >= 0; r--) {
             if (playfield[r].every(v => !!v)) {
