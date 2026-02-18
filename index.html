@@ -1,44 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Zenitsu Tetris Ultra</title>
+    <title>Zenitsu Tetris Ultra Fixed</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
+            /* Исправлена ссылка на фон */
             background: #1a1a1d url('https://i.ibb.co') no-repeat center center fixed; 
             background-size: cover; color: #fff; font-family: sans-serif;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-height: 100vh; overflow: hidden;
+            height: 100vh; overflow: hidden;
         }
         body::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: -1; }
+        
+        .game-wrap { display: flex; flex-direction: column; align-items: center; z-index: 10; }
         .stats { font-size: 20px; margin-bottom: 10px; color: #FFE138; text-shadow: 2px 2px #000; font-weight: bold; }
         canvas { border: 3px solid #FFE138; background: rgba(0,0,0,0.9); box-shadow: 0 0 20px #FFE138; width: 240px; height: 400px; }
+        
         .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; width: 280px; }
-        button { padding: 15px; font-size: 25px; background: #333; color: #fff; border: 2px solid #FFE138; border-radius: 12px; cursor: pointer; touch-action: manipulation; }
+        button { padding: 15px; font-size: 25px; background: rgba(51, 51, 51, 0.9); color: #fff; border: 2px solid #FFE138; border-radius: 12px; cursor: pointer; touch-action: manipulation; }
         button:active { background: #FFE138; color: #000; }
         .restart { grid-column: 1/4; font-size: 16px; padding: 10px; background: #622; border-color: #f55; }
     </style>
 </head>
 <body>
 
-    <div class="stats">ОЧКИ: <span id="s">0</span> | РЕКОРД: <span id="b">0</span></div>
-    <canvas id="t" width="240" height="400"></canvas>
+    <div class="game-wrap">
+        <div class="stats">ОЧКИ: <span id="s">0</span> | РЕКОРД: <span id="b">0</span></div>
+        <canvas id="t" width="240" height="400"></canvas>
 
-    <div class="controls">
-        <button onclick="m(-1)">⬅️</button>
-        <button onclick="r()">🔄</button>
-        <button onclick="m(1)">➡️</button>
-        <button style="grid-column: 2" onclick="d()">⬇️</button>
-        <button class="restart" onclick="init()">НОВАЯ ИГРА ⚡</button>
+        <div class="controls">
+            <button onclick="m(-1)">⬅️</button>
+            <button onclick="r()">🔄</button>
+            <button onclick="m(1)">➡️</button>
+            <button style="grid-column: 2" onclick="d()">⬇️</button>
+            <button class="restart" onclick="init()">НОВАЯ ИГРА ⚡</button>
+        </div>
     </div>
 
 <script>
     const canvas = document.getElementById('t'), ctx = canvas.getContext('2d');
     ctx.scale(20, 20);
 
-    // Фигуры заданы ЖЕСТКО через цифры, чтобы ничего не исчезало
     const shapes = {
         'I': [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]],
         'L': [[0,2,0],[0,2,0],[0,2,2]],
@@ -54,14 +59,16 @@
 
     function init() {
         arena = Array.from({length: 20}, () => Array(12).fill(0));
-        player = { pos: {x: 4, y: 0}, matrix: shapes['I'], score: 0 };
+        player = { pos: {x: 4, y: 0}, matrix: null, score: 0 };
         dropCounter = 0; dropInterval = 1000; lastTime = 0;
         reset(); updateScore();
     }
 
     function reset() {
         const p = 'ILJOTSZ';
-        player.matrix = shapes[p[p.length * Math.random() | 0]];
+        const type = p[p.length * Math.random() | 0];
+        // ИСПРАВЛЕНО: Клонируем массив, чтобы не портить оригинал в shapes
+        player.matrix = shapes[type].map(row => [...row]);
         player.pos.y = 0; player.pos.x = 4;
         if (collide()) {
             if(player.score > (localStorage.getItem('zBest')||0)) localStorage.setItem('zBest', player.score);
@@ -88,6 +95,7 @@
 
     function r() {
         rotate(player.matrix);
+        // Если после поворота врезались — возвращаем как было (3 поворота = назад)
         if (collide()) { rotate(player.matrix); rotate(player.matrix); rotate(player.matrix); }
     }
 
@@ -124,8 +132,11 @@
     }
 
     function update(time = 0) {
-        dropCounter += time - lastTime; lastTime = time;
+        const deltaTime = time - lastTime;
+        lastTime = time;
+        dropCounter += deltaTime;
         if (dropCounter > dropInterval) d();
+        
         ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         arena.forEach((row, y) => row.forEach((v, x) => {
             if (v !== 0) { ctx.fillStyle = colors[v]; ctx.fillRect(x, y, 1, 1); }
