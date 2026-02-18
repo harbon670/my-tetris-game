@@ -1,73 +1,77 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>Zenitsu Tetris Thunder</title>
+    <title>Classic Tetris Speed</title>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            background: #1a1a1d url('https://i.ibb.co') no-repeat center center fixed; 
-            background-size: cover; color: #fff; font-family: sans-serif;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-height: 100vh; overflow: hidden;
+            background: #1a1a1a; color: #fff; font-family: 'Courier New', Courier, monospace;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            height: 100vh; margin: 0; overflow: hidden; 
         }
-        body::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: -1; }
-        .stats { font-size: 20px; margin-bottom: 10px; color: #FFE138; text-shadow: 2px 2px #000; font-weight: bold; }
-        canvas { border: 3px solid #FFE138; background: rgba(0,0,0,0.9); box-shadow: 0 0 20px #FFE138; width: 240px; height: 400px; }
-        .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; width: 280px; }
-        button { padding: 15px; font-size: 25px; background: rgba(40,40,40,0.9); color: #fff; border: 2px solid #FFE138; border-radius: 12px; cursor: pointer; touch-action: manipulation; }
-        button:active { background: #FFE138; color: #000; }
-        .restart { grid-column: 1/4; font-size: 16px; padding: 10px; background: #622; border-color: #f55; margin-top: 5px; }
+        .stats { font-size: 20px; margin-bottom: 10px; border: 2px solid #555; padding: 10px; background: #000; width: 240px; text-align: center; }
+        .stats b { color: #0f0; }
+        canvas { border: 4px solid #fff; background-color: #000; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; width: 280px; }
+        button { 
+            padding: 15px; font-size: 24px; background: #333; color: white; border: 2px solid #777; 
+            border-radius: 5px; touch-action: manipulation; cursor: pointer; 
+        }
+        button:active { background: #555; }
+        .restart { grid-column: 1 / 4; font-size: 16px; background: #800; border-color: #f00; }
     </style>
 </head>
 <body>
 
-    <div class="stats">ОЧКИ: <span id="s">0</span> | РЕКОРД: <span id="b">0</span></div>
-    <canvas id="t" width="240" height="400"></canvas>
+    <div class="stats">
+        SCORE: <b id="s">0</b><br>
+        BEST: <b id="h">0</b><br>
+        LEVEL: <b id="l">1</b>
+    </div>
+
+    <canvas id="tetris" width="240" height="400"></canvas>
 
     <div class="controls">
         <button onclick="m(-1)">⬅️</button>
         <button onclick="r()">🔄</button>
         <button onclick="m(1)">➡️</button>
         <button style="grid-column: 2" onclick="d()">⬇️</button>
-        <button class="restart" onclick="init()">НОВАЯ ИГРА ⚡</button>
+        <button class="restart" onclick="init()">NEW GAME</button>
     </div>
 
 <script>
-    const canvas = document.getElementById('t'), ctx = canvas.getContext('2d');
+    const canvas = document.getElementById('tetris'), ctx = canvas.getContext('2d');
     ctx.scale(20, 20);
 
-    // Фигуры заданы строками, чтобы исключить ошибки при копировании
-    const pieceData = {
-        'I': [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]],
-        'L': [[0,2,0],[0,2,0],[0,2,2]],
-        'J': [[0,3,0],[0,3,0],[3,3,0]],
-        'O': [[4,4],[4,4]],
-        'Z': [[5,5,0],[0,5,5],[0,0,0]],
-        'S': [[0,6,6],[6,6,0],[0,0,0]],
-        'T': [[0,7,0],[7,7,7],[0,0,0]]
-    };
+    // Матрицы фигур (Классика)
+    function createPiece(t) {
+        if (t === 'I') return [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]];
+        if (t === 'L') return [[0,2,0],[0,2,0],[0,2,2]];
+        if (t === 'J') return [[0,3,0],[0,3,0],[3,3,0]];
+        if (t === 'O') return [[4,4],[4,4]];
+        if (t === 'Z') return [[5,5,0],[0,5,5],[0,0,0]];
+        if (t === 'S') return [[0,6,6],[6,6,0],[0,0,0]];
+        if (t === 'T') return [[0,7,0],[7,7,7],[0,0,0]];
+    }
 
-    const colors = [null, '#FFD700', '#FFE138', '#FFFACD', '#DAA520', '#B8860B', '#F0E68C', '#FFFFE0'];
+    const colors = [null, '#00f0f0', '#f0a000', '#0000f0', '#f0f000', '#f00000', '#00f000', '#a000f0'];
     let arena, player, dropCounter, dropInterval, lastTime;
 
     function init() {
         arena = Array.from({length: 20}, () => Array(12).fill(0));
-        player = { pos: {x: 4, y: 0}, matrix: null, score: 0 };
+        player = { pos: {x: 4, y: 0}, matrix: null, score: 0, level: 1, lines: 0 };
         dropCounter = 0; dropInterval = 1000; lastTime = 0;
         reset(); updateScore();
     }
 
     function reset() {
         const types = 'ILJOTSZ';
-        const type = types[Math.floor(Math.random() * types.length)];
-        player.matrix = pieceData[type].map(row => [...row]);
-        player.pos.y = 0;
-        player.pos.x = Math.floor(arena[0].length / 2) - Math.floor(player.matrix[0].length / 2);
-        
+        player.matrix = createPiece(types[types.length * Math.random() | 0]);
+        player.pos.y = 0; player.pos.x = 4;
         if (collide()) {
-            if(player.score > (localStorage.getItem('zBest')||0)) localStorage.setItem('zBest', player.score);
+            let best = localStorage.getItem('classicBest') || 0;
+            if(player.score > best) localStorage.setItem('classicBest', player.score);
             init();
         }
     }
@@ -90,8 +94,12 @@
     }
 
     function r() {
+        const pos = player.pos.x;
         rotate(player.matrix);
-        if (collide()) { rotate(player.matrix); rotate(player.matrix); rotate(player.matrix); }
+        if (collide()) { 
+            rotate(player.matrix); rotate(player.matrix); rotate(player.matrix);
+            player.pos.x = pos; 
+        }
     }
 
     function d() {
@@ -120,15 +128,24 @@
             ++y; count++;
         }
         if (count > 0) { 
-            player.score += count * 10; 
-            if (dropInterval > 150) dropInterval -= 50; // УСКОРЕНИЕ
+            player.score += count * 10 * player.level;
+            player.lines += count;
+            
+            // ЛОГИКА УСКОРЕНИЯ: каждые 10 линий уровень вверх
+            if (player.lines >= 10) {
+                player.level++;
+                player.lines = 0;
+                // Уменьшаем интервал (чем меньше, тем быстрее)
+                dropInterval = Math.max(100, dropInterval - 150);
+            }
             updateScore(); 
         }
     }
 
     function updateScore() {
         document.getElementById('s').innerText = player.score;
-        document.getElementById('b').innerText = localStorage.getItem('zBest') || 0;
+        document.getElementById('l').innerText = player.level;
+        document.getElementById('h').innerText = localStorage.getItem('classicBest') || 0;
     }
 
     function update(time = 0) {
@@ -137,18 +154,19 @@
         if (dropCounter > dropInterval) d();
         
         ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
         arena.forEach((row, y) => row.forEach((v, x) => {
             if (v !== 0) { ctx.fillStyle = colors[v]; ctx.fillRect(x, y, 1, 1); }
         }));
-        
-        if (player.matrix) {
-            player.matrix.forEach((row, y) => row.forEach((v, x) => {
-                if (v !== 0) { ctx.fillStyle = colors[v]; ctx.fillRect(x + player.pos.x, y + player.pos.y, 1, 1); }
-            }));
-        }
+        player.matrix.forEach((row, y) => row.forEach((v, x) => {
+            if (v !== 0) { ctx.fillStyle = colors[v]; ctx.fillRect(x + player.pos.x, y + player.pos.y, 1, 1); }
+        }));
         requestAnimationFrame(update);
     }
+
+    document.addEventListener('keydown', e => {
+        if(e.keyCode === 37) m(-1); else if(e.keyCode === 39) m(1);
+        else if(e.keyCode === 40) d(); else if(e.keyCode === 38 || e.keyCode === 32) r();
+    });
 
     init(); update();
 </script>
