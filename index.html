@@ -2,43 +2,28 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Tetris Mobile</title>
+  <title>Tetris Gestures</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <style>
-    body { background: #050505; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: manipulation; }
-    canvas { border: 2px solid #333; background: #000; max-height: 70vh; max-width: 95vw; }
-    #score { font-size: 24px; margin-bottom: 10px; color: #0ff; text-shadow: 0 0 10px #0ff; }
-    
-    /* Стили для круглых кнопок */
-    .controls { display: grid; grid-template-columns: repeat(3, 70px); grid-gap: 15px; margin-top: 20px; }
-    .btn { width: 70px; height: 70px; background: rgba(255,255,255,0.1); border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #fff; user-select: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-    .btn:active { background: rgba(255,255,255,0.3); transform: scale(0.9); }
-    .btn.rotate { grid-column: 2; border-color: #f0f; box-shadow: 0 0 10px #f0f; }
-    .btn.left { grid-column: 1; border-color: #0ff; box-shadow: 0 0 10px #0ff; }
-    .btn.right { grid-column: 3; border-color: #0ff; box-shadow: 0 0 10px #0ff; }
-    .btn.down { grid-column: 2; border-color: #ff0; box-shadow: 0 0 10px #ff0; }
+    body { background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: none; }
+    canvas { border: 2px solid #222; background: #050505; max-height: 85vh; max-width: 95vw; box-shadow: 0 0 20px rgba(0,255,255,0.1); }
+    #score { font-size: 20px; margin-bottom: 10px; color: #0ff; letter-spacing: 2px; }
+    .hint { font-size: 12px; color: #555; margin-top: 5px; }
   </style>
 </head>
 <body>
 
   <div id="score">SCORE: 0</div>
   <canvas width="320" height="640" id="game"></canvas>
-
-  <div class="controls">
-    <div class="btn rotate" onpointerdown="move('rotate')">↻</div>
-    <div class="btn left" onpointerdown="move('left')">←</div>
-    <div class="btn down" onpointerdown="move('down')">↓</div>
-    <div class="btn right" onpointerdown="move('right')">→</div>
-  </div>
+  <div class="hint">Тап — поворот | Свайп — движение</div>
 
   <script>
     const canvas = document.getElementById('game');
     const context = canvas.getContext('2d');
     const grid = 32;
-    let score = 0;
-    let count = 0;
-    let gameOver = false;
+    let score = 0, count = 0, gameOver = false;
 
+    // Матрицы фигур
     const tetrominos = {
       'I': [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
       'J': [[1,0,0],[1,1,1],[0,0,0]],
@@ -79,36 +64,67 @@
 
     let tetromino = getNext();
 
-    function move(dir) {
+    // --- ЛОГИКА ЖЕСТОВ ---
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isSwipe = false;
+
+    window.addEventListener('touchstart', e => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      isSwipe = false;
+    }, {passive: false});
+
+    window.addEventListener('touchmove', e => {
       if (gameOver) return;
-      if (dir === 'left' && isValid(tetromino.matrix, tetromino.row, tetromino.col - 1)) tetromino.col--;
-      if (dir === 'right' && isValid(tetromino.matrix, tetromino.row, tetromino.col + 1)) tetromino.col++;
-      if (dir === 'down' && isValid(tetromino.matrix, tetromino.row + 1, tetromino.col)) tetromino.row++;
-      if (dir === 'rotate') {
+      let dx = e.touches[0].clientX - touchStartX;
+      let dy = e.touches[0].clientY - touchStartY;
+
+      if (Math.abs(dx) > 30 || Math.abs(dy) > 30) isSwipe = true;
+
+      if (Math.abs(dx) > grid) {
+        const dir = dx > 0 ? 1 : -1;
+        if (isValid(tetromino.matrix, tetromino.row, tetromino.col + dir)) {
+          tetromino.col += dir;
+          touchStartX = e.touches[0].clientX; // Сброс для плавности
+        }
+      }
+      
+      if (dy > grid) {
+        if (isValid(tetromino.matrix, tetromino.row + 1, tetromino.col)) {
+          tetromino.row++;
+          touchStartY = e.touches[0].clientY;
+        }
+      }
+      e.preventDefault();
+    }, {passive: false});
+
+    window.addEventListener('touchend', e => {
+      if (!isSwipe && !gameOver) {
         const m = rotate(tetromino.matrix);
         if (isValid(m, tetromino.row, tetromino.col)) tetromino.matrix = m;
       }
-    }
+    });
 
     function loop() {
       if (gameOver) {
-        context.fillStyle = 'white'; context.font = '30px Arial'; context.textAlign = 'center';
-        context.fillText('GAME OVER', canvas.width/2, canvas.height/2);
+        context.fillStyle = 'white'; context.font = '24px Arial'; context.textAlign = 'center';
+        context.fillText('GAME OVER', 160, 320);
         return;
       }
       requestAnimationFrame(loop);
-      context.clearRect(0,0,canvas.width,canvas.height);
+      context.clearRect(0,0,320,640);
 
       playfield.forEach((row, r) => row.forEach((cell, c) => {
         if (cell) { context.fillStyle = colors[cell]; context.fillRect(c*grid, r*grid, grid-1, grid-1); }
       }));
 
-      if (++count > 35) {
+      if (++count > 40) {
         tetromino.row++; count = 0;
         if (!isValid(tetromino.matrix, tetromino.row, tetromino.col)) {
           tetromino.row--;
           tetromino.matrix.forEach((row, r) => row.forEach((v, c) => {
-            if (v) { if (tetromino.row + r < 0) gameOver = true; else playfield[tetromino.row+r][tetromino.col+c] = tetromino.name; }
+            if (v) { if (tetromino.row+r < 0) gameOver = true; else playfield[tetromino.row+r][tetromino.col+c] = tetromino.name; }
           }));
           for (let r = 19; r >= 0; r--) {
             if (playfield[r].every(v => !!v)) {
@@ -125,14 +141,6 @@
         if (v) context.fillRect((tetromino.col+c)*grid, (tetromino.row+r)*grid, grid-1, grid-1);
       }));
     }
-
-    // Клавиатура для ПК
-    document.addEventListener('keydown', e => {
-      if (e.keyCode === 37) move('left');
-      if (e.keyCode === 39) move('right');
-      if (e.keyCode === 38) move('rotate');
-      if (e.keyCode === 40) move('down');
-    });
 
     requestAnimationFrame(loop);
   </script>
